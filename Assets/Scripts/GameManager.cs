@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.SceneManagement; // para recargar la escena
 
 public enum EstadoJuego
 {
@@ -22,7 +23,7 @@ public class GameManager : MonoBehaviour
 
     [Header("Puntuación y Meta de Victoria")]
     public int puntajeActual = 0;
-    public int puntosParaGanar = 50; // Si cada item da 10, al juntar 5 items ganas
+    public int puntosParaGanar = 50;
 
     private void Awake()
     {
@@ -40,7 +41,6 @@ public class GameManager : MonoBehaviour
     {
         saludActual = saludMaxima;
         CambiarEstado(EstadoJuego.Start);
-        // Pasamos automáticamente al estado jugando al iniciar la partida
         CambiarEstado(EstadoJuego.Playing);
     }
 
@@ -58,6 +58,19 @@ public class GameManager : MonoBehaviour
                 CambiarEstado(EstadoJuego.Playing);
             }
         }
+
+        // Reiniciar la partida en cualquier momento (o al ganar/perder) presionando la tecla R
+        if (Input.GetKeyDown(KeyCode.R))
+        {
+            ReiniciarPartida();
+        }
+    }
+
+    public void ReiniciarPartida()
+    {
+        
+        Debug.Log("[GameManager] Reiniciando partida...");
+        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
 
     public void CambiarEstado(EstadoJuego nuevoEstado)
@@ -77,18 +90,18 @@ public class GameManager : MonoBehaviour
                 break;
 
             case EstadoJuego.Paused:
-                Time.timeScale = 0f; // Congela el tiempo del juego
-                Debug.Log($"[GameManager] Estado: PAUSED (Juego en Pausa) | Vida: {saludActual}/{saludMaxima} | Puntaje: {puntajeActual}/{puntosParaGanar}");
+                Time.timeScale = 0f;
+                Debug.Log($"[GameManager] Estado: PAUSED (Juego en Pausa) | Presiona P para continuar o R para reiniciar.");
                 break;
 
             case EstadoJuego.Victory:
                 Time.timeScale = 0f;
-                Debug.Log($"[GameManager] ¡VICTORIA! Recolectaste todos los datos. | Vida final: {saludActual} | Puntaje final: {puntajeActual}");
+                Debug.Log($"[GameManager] ¡VICTORIA :D! Recolectaste todas las monedas. | Vida final: {saludActual} | Puntaje final: {puntajeActual} | Presiona R para jugar de nuevo.");
                 break;
 
             case EstadoJuego.GameOver:
                 Time.timeScale = 0f;
-                Debug.Log($"[GameManager] GAME OVER. Glorp se quedó sin salud. | Puntaje alcanzado: {puntajeActual}");
+                Debug.Log($"[GameManager] GAME OVER :(. Glorp se quedó sin salud. | Puntaje alcanzado: {puntajeActual} | Presiona R para reintentar.");
                 break;
         }
     }

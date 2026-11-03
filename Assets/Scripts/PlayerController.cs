@@ -54,12 +54,18 @@ public class PlayerController : MonoBehaviour
 
     void FixedUpdate()
     {
+        // Si el juego no está en Playing, frenamos el movimiento físico
+        if (GameManager.Instancia != null && GameManager.Instancia.estadoActual != EstadoJuego.Playing)
+        {
+            rb.linearVelocity = Vector3.zero;
+            return;
+        }
+
         float avanzar = Input.GetAxis("Vertical");
         float girar = Input.GetAxis("Horizontal");
 
         transform.Rotate(0f, girar * velocidadGiro * Time.fixedDeltaTime, 0f);
 
-        
         Vector3 direccion = (-transform.forward) * avanzar * velocidadMovimiento;
         rb.linearVelocity = new Vector3(direccion.x, rb.linearVelocity.y, direccion.z);
     }

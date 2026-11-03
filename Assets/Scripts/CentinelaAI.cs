@@ -12,13 +12,17 @@ public class CentinelaAI : MonoBehaviour
     public float rangoDeteccion = 10f;
     public float rangoAtaque = 1.8f;
 
+    [Header("Sistema de Ataque y Cooldown")]
+    public int danioAtaque = 20;
+    public float tiempoEntreAtaques = 1.5f; // Espera 1.5s entre cada golpe
+    private float proximoAtaquePermitido = 0f;
+
     private NavMeshAgent agente;
     private bool persiguiendo = false;
 
     void Start()
     {
         agente = GetComponent<NavMeshAgent>();
-
 
         if (objetivoJugador == null)
         {
@@ -36,12 +40,16 @@ public class CentinelaAI : MonoBehaviour
     {
         if (objetivoJugador == null) return;
 
-        // Calculamos a cuantos metros esta Glorp del Centinela
+        // Si el juego terminó o está en pausa, el fantasma no ataca
+        if (GameManager.Instancia != null && GameManager.Instancia.estadoActual != EstadoJuego.Playing)
+        {
+            return;
+        }
+
         float distanciaAlJugador = Vector3.Distance(transform.position, objetivoJugador.position);
 
         if (distanciaAlJugador <= rangoDeteccion)
         {
-            //  glopr entra al area y el centinela lo persigue
             if (!persiguiendo)
             {
                 persiguiendo = true;
@@ -49,10 +57,15 @@ public class CentinelaAI : MonoBehaviour
             }
 
             agente.SetDestination(objetivoJugador.position);
+
+            // Si está lo suficientemente cerca y ya pasó el tiempo de espera, ataca
+            if (distanciaAlJugador <= rangoAtaque && Time.time >= proximoAtaquePermitido)
+            {
+                AtacarJugador();
+            }
         }
         else
         {
-            // Si glorp se aleja fuera del rango, el centinela vuelve a su ruta de patrulla
             if (persiguiendo)
             {
                 persiguiendo = false;
@@ -60,11 +73,24 @@ public class CentinelaAI : MonoBehaviour
                 IrAlSiguientePunto();
             }
 
-            // Cuando llega a una esquina del camino, pasa a la siguiente esquina
             if (!agente.pathPending && agente.remainingDistance < 0.5f)
             {
                 IrAlSiguientePunto();
             }
+        }
+    }
+
+    void AtacarJugador()
+    {
+        proximoAtaquePermitido = Time.time + tiempoEntreAtaques;
+
+        if (GameManager.Instancia != null)
+        {
+            GameManager.Instancia.RecibirDanio(danioAtaque);
+        }
+        else
+        {
+            Debug.Log("[IA Centinela] ¡Ataque al jugador! -" + danioAtaque + " HP.");
         }
     }
 
@@ -76,10 +102,12 @@ public class CentinelaAI : MonoBehaviour
         indiceActual = (indiceActual + 1) % puntosPatrulla.Length;
     }
 
-    // circulo amarillo en la escena para ver el radio de vision del enemigo
     void OnDrawGizmosSelected()
     {
         Gizmos.color = Color.yellow;
         Gizmos.DrawWireSphere(transform.position, rangoDeteccion);
+
+        Gizmos.color = Color.red;
+        Gizmos.DrawWireSphere(transform.position, rangoAtaque);
     }
 }
