@@ -9,13 +9,18 @@ public class CentinelaAI : MonoBehaviour
 
     [Header("Detección y Persecución")]
     public Transform objetivoJugador;
+    private PlayerController scriptJugador;
     public float rangoDeteccion = 10f;
     public float rangoAtaque = 1.8f;
 
     [Header("Sistema de Ataque y Cooldown")]
     public int danioAtaque = 20;
-    public float tiempoEntreAtaques = 1.5f; // Espera 1.5s entre cada golpe
+    public float tiempoEntreAtaques = 1.5f;
     private float proximoAtaquePermitido = 0f;
+
+    [Header("Opción A: Estado de Aturdimiento")]
+    private bool estaAturdido = false;
+    private float tiempoFinAturdimiento = 0f;
 
     private NavMeshAgent agente;
     private bool persiguiendo = false;
@@ -33,6 +38,11 @@ public class CentinelaAI : MonoBehaviour
             }
         }
 
+        if (objetivoJugador != null)
+        {
+            scriptJugador = objetivoJugador.GetComponent<PlayerController>();
+        }
+
         IrAlSiguientePunto();
     }
 
@@ -40,15 +50,32 @@ public class CentinelaAI : MonoBehaviour
     {
         if (objetivoJugador == null) return;
 
-        // Si el juego terminó o está en pausa, el fantasma no ataca
         if (GameManager.Instancia != null && GameManager.Instancia.estadoActual != EstadoJuego.Playing)
         {
             return;
         }
 
+        // Si el fantasma fue alcanzado por el Raycast aturdidor, se congela
+        if (estaAturdido)
+        {
+            if (Time.time >= tiempoFinAturdimiento)
+            {
+                estaAturdido = false;
+                agente.isStopped = false;
+                Debug.Log("[IA Centinela] El enemigo se recuperó del aturdimiento y vuelve a moverse.");
+            }
+            else
+            {
+                return; // Mientras está aturdido no camina ni ataca
+            }
+        }
+
+        // Verifica si Glorp está invisible
+        bool jugadorInvisible = (scriptJugador != null && scriptJugador.esInvisible);
+
         float distanciaAlJugador = Vector3.Distance(transform.position, objetivoJugador.position);
 
-        if (distanciaAlJugador <= rangoDeteccion)
+        if (distanciaAlJugador <= rangoDeteccion && !jugadorInvisible)
         {
             if (!persiguiendo)
             {
@@ -58,7 +85,6 @@ public class CentinelaAI : MonoBehaviour
 
             agente.SetDestination(objetivoJugador.position);
 
-            // Si está lo suficientemente cerca y ya pasó el tiempo de espera, ataca
             if (distanciaAlJugador <= rangoAtaque && Time.time >= proximoAtaquePermitido)
             {
                 AtacarJugador();
@@ -69,7 +95,7 @@ public class CentinelaAI : MonoBehaviour
             if (persiguiendo)
             {
                 persiguiendo = false;
-                Debug.Log("[IA Centinela] Jugador fuera de rango. Retomando patrulla.");
+                Debug.Log("[IA Centinela] Jugador fuera de rango o invisible. Retomando patrulla.");
                 IrAlSiguientePunto();
             }
 
@@ -88,10 +114,16 @@ public class CentinelaAI : MonoBehaviour
         {
             GameManager.Instancia.RecibirDanio(danioAtaque);
         }
-        else
-        {
-            Debug.Log("[IA Centinela] ¡Ataque al jugador! -" + danioAtaque + " HP.");
-        }
+    }
+
+    // Método llamado por el arma Raycast de Glorp
+    public void Aturdir(float segundos)
+    {
+        estaAturdido = true;
+        tiempoFinAturdimiento = Time.time + segundos;
+        agente.isStopped = true;
+        agente.velocity = Vector3.zero; // Frena en seco cualquier inercia
+        Debug.Log($"[Arma Raycast] Enemigo aturdido y paralizado por {segundos} segundos!");
     }
 
     void IrAlSiguientePunto()
